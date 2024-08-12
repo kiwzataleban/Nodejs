@@ -10,4 +10,4 @@ const conn = mysql.createPool({
 
 const queryAsync = util.promisify(conn.query).bind(conn);
 
-module.exports = (conn, queryAsync, mysql);
+module.exports = { conn, queryAsync };

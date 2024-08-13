@@ -1,11 +1,11 @@
 const express = require('express');
-const { conn } = require('../dbconnect'); // ใช้ require แทน import
+const { conn } = require('../dbconnect');
 const util = require('util');
 
 const queryAsync = util.promisify(conn.query).bind(conn);
 const router = express.Router();
 
-// ล็อกอิน
+// login
 router.post('/', async (req, res) => {
   try {
     const { username, password } = req.body;

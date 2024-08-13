@@ -1,5 +1,5 @@
 const express = require('express');
-const { conn } = require('../dbconnect'); // ใช้ require แทน import
+const { conn } = require('../dbconnect');
 const util = require('util');
 
 const queryAsync = util.promisify(conn.query).bind(conn);
@@ -10,7 +10,6 @@ router.post('/', async (req, res) => {
   try {
     const { username, password, email, phone, img } = req.body;
 
-    // Check if user already exists
     const checkSql = 'SELECT * FROM users WHERE username = ?';
     const existingUser = await queryAsync(checkSql, [username]);
 
@@ -18,7 +17,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
-    // Insert new user into the database
     const insertSql = 'INSERT INTO users (username, password, email, phone, img) VALUES (?, ?, ?, ?, ?)';
     await queryAsync(insertSql, [username, password, email, phone, img]);
 

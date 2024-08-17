@@ -8,9 +8,9 @@ const router = express.Router();
 // login
 router.post('/', async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const sql = 'SELECT * FROM users WHERE username = ? AND password = ?';
-    const result = await queryAsync(sql, [username, password]);
+    const { phone, password } = req.body;
+    const sql = 'SELECT * FROM users WHERE phone = ? AND password = ?';
+    const result = await queryAsync(sql, [phone, password]);
 
     if (result.length > 0) {
       res.json(result);

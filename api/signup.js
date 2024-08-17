@@ -17,8 +17,11 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
-    const insertSql = 'INSERT INTO users (username, password, email, phone, img) VALUES (?, ?, ?, ?, ?)';
-    await queryAsync(insertSql, [username, password, email, phone, img]);
+    // Set the user type as 'user'
+    const userType = 'user';
+
+    const insertSql = 'INSERT INTO users (username, password, email, phone, img, type) VALUES (?, ?, ?, ?, ?, ?)';
+    await queryAsync(insertSql, [username, password, email, phone, img, userType]);
 
     res.status(201).json({ success: true, message: 'User registered successfully' });
   } catch (err) {

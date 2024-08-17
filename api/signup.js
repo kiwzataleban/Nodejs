@@ -10,8 +10,8 @@ router.post('/', async (req, res) => {
   try {
     const { username, password, email, phone, img } = req.body;
 
-    const checkSql = 'SELECT * FROM users WHERE username = ?';
-    const existingUser = await queryAsync(checkSql, [username]);
+    const checkSql = 'SELECT * FROM users WHERE phone = ?';
+    const existingUser = await queryAsync(checkSql, [phone]);
 
     if (existingUser.length > 0) {
       return res.status(400).json({ success: false, message: 'User already exists' });

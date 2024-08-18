@@ -3,18 +3,22 @@ const router = express.Router();
 const { queryAsync } = require('../dbconnect');
 
 // ดึงข้อมูลผู้ใช้ทั้งหมด
-// router.get("/", async (req, res) => {
-//     const sql ="SELECT * FROM users ";
-//   conn.query(sql, [typeuser], (err, result, fields) => {
-//           if (result && result.length > 0) {
-//               res.json(result);
-//           } else {
-//               res.json({
-//                   success: false,
-//               });
-//           }
-//   });
-// });
+router.get('/', async (req, res) => {
+    try {
+      const typeuser = 'user';
+      const sql = 'SELECT * FROM users WHERE type = ?';
+      const result = await queryAsync(sql, [typeuser]);
+  
+      if (result.length > 0) {
+        res.json(result);
+      } else {
+        res.json({ success: false });
+      }
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ success: false, message: 'Internal Server Error' });
+    }
+  });
 
 
 // ดึงข้อมูลผู้ใช้ตาม ID

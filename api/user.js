@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { queryAsync } = require('../dbconnect');
 
-// ดึงข้อมูลผู้ใช้ทั้งหมด
+// ดึงข้อมูลผู้ใช้ทั้งหมดของUser
 router.get('/', async (req, res) => {
     try {
       const typeuser = 'user';

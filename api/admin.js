@@ -1,3 +1,9 @@
 const express = require('express');
-const { conn } = require('../dbconnect');
-const util = require('util');
+const router = express.Router();
+
+// Define your admin routes here
+router.get('/', (req, res) => {
+  res.send('Admin route');
+});
+
+module.exports = router;

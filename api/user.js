@@ -37,28 +37,28 @@ router.get("/:userID", async (req, res) => {
         res.status(500).json({ success: false, message: 'Database query error' });
     }
 });
-router.put("/:userID", async (req, res) => {
-  try {
-      let userID = req.params.userID;
-      let { username, phone, email } = req.body; // Assuming these fields are sent in the request body
+router.put("/:userID", (req, res) => {
+  let userID = req.params.userID;
+  let { username, phone, email } = req.body;
 
-      // SQL query to update user data
-      const sql = `
-          UPDATE users
-          SET username = ?, phone = ?, email = ?
-          WHERE uid = ?
-      `;
-      const result = await queryAsync(sql, [username, phone, email, userID]);
+  // SQL query to update user data
+  const sql = `
+      UPDATE users
+      SET username = ?, phone = ?, email = ?
+      WHERE uid = ?
+  `;
 
-      // Check if any row was updated
-      if (result.affectedRows > 0) {
+  // Execute the SQL query
+  query(sql, [username, phone, email, userID], (err, result) => {
+      if (err) {
+          console.error('Database query error:', err.message); // Log the specific error message
+          res.status(500).json({ success: false, message: `Database query error: ${err.message}` });
+      } else if (result.affectedRows > 0) {
           res.json({ success: true, message: 'User updated successfully' });
       } else {
           res.json({ success: false, message: 'User not found' });
       }
-  } catch (err) {
-      console.error('Database query error:', err);
-      res.status(500).json({ success: false, message: 'Database query error' });
-  }
+  });
 });
+
 module.exports = router;

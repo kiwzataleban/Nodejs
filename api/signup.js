@@ -8,7 +8,7 @@ const router = express.Router();
 // Sign up
 router.post('/', async (req, res) => {
   try {
-    const { username, password, email, phone, img } = req.body;
+    const { username, password, email, phone} = req.body;
 
     const checkSql = 'SELECT * FROM users WHERE phone = ?';
     const existingUser = await queryAsync(checkSql, [phone]);
@@ -20,8 +20,8 @@ router.post('/', async (req, res) => {
     // Set the user type as 'user'
     const userType = 'user';
 
-    const insertSql = 'INSERT INTO users (username, password, email, phone, img, type) VALUES (?, ?, ?, ?, ?, ?)';
-    await queryAsync(insertSql, [username, password, email, phone, img, userType]);
+    const insertSql = 'INSERT INTO users (username, password, email, phone, type) VALUES (?, ?, ?, ?, ?)';
+    await queryAsync(insertSql, [username, password, email, phone, userType]);
 
     res.status(201).json({ success: true, message: 'User registered successfully' });
   } catch (err) {

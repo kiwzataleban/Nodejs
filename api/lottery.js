@@ -28,9 +28,9 @@ router.get("/seprize", (req, res) => {
 
 router.put("/userbuylotto", async (req, res) => {
     let userbuylotto = req.body;
-    const pricelotto = 100; // Price of the lottery ticket
+    const pricelotto = 50; // Price of the lottery ticket
 
-    // Check the user's balance balance first
+    // Check the user's balance first
     let sqlCheckbalance = "SELECT balance FROM users WHERE uid = ?";
     conn.query(sqlCheckbalance, [userbuylotto.uid], (err, result) => {
         if (err) {
@@ -70,4 +70,24 @@ router.put("/userbuylotto", async (req, res) => {
     });
 });
 
+router.post("/searchlotto", (req, res) => {
+    let search = req.body;
+    
+    // SQL ค้นหาจาก username และ password ที่มาจากผู้ใช้ และตรวจสอบเงื่อนไขอื่นๆ
+    let sql = `
+        SELECT * FROM lottory
+        WHERE uid IS NULL
+          AND number LIKE ?
+          AND accepted IS NULL
+    `;
+    let formattedSearch = `${search.numlotto}`;
+    sql = mysql.format(sql, [
+        `%${formattedSearch}%`
+    ]);
+
+    conn.query(sql, (err, result) => {
+        if (err) throw err;
+        res.status(201).json(result);
+    });
+});
 module.exports = router;

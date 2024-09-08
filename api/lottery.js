@@ -71,27 +71,27 @@ router.put("/userbuylotto", async (req, res) => {
 router.post("/searchlotto", async (req, res) => {
     let search = req.body;
     try {
-        if (!search.numlotto) {
-            return res.status(400).send("Missing required field: numlotto");
+        if (!search.number_lotto) {
+            return res.status(400).send("Missing required field: number_lotto");
         }
 
-        // SQL search
+        // Manually format the query
         let sql = `
-            SELECT * FROM lottory
-            WHERE uid IS NULL
-              AND number LIKE ?
+            SELECT lottery_id, price, number, prize, uid, accepted
+            FROM lottory
+            WHERE number LIKE '%${search.number_lotto}%'
               AND accepted IS NULL
         `;
-        let formattedSearch = `%${search.numlotto}%`; // Add wildcards to both sides
-        const result = await query(mysql.format(sql, [formattedSearch]));
+        console.log("Executing SQL Query:", sql); // Log the SQL query for debugging
+        const result = await query(sql);
 
         if (result.length === 0) {
             return res.status(404).send("No matching lotto found");
         }
 
-        res.status(200).json(result); // Changed to 200 for successful search
+        res.status(200).json(result); // Send the matching results
     } catch (err) {
-        console.error("Search Error:", err); // Added more descriptive logging
+        console.error("Search Error:", err.message); // Log error details
         res.status(500).send("Internal Server Error");
     }
 });

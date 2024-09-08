@@ -39,18 +39,18 @@ router.get("/:userID", async (req, res) => {
 });
 router.put("/:userID", async (req, res) => {
   let userID = req.params.userID;
-  let { fullname, phone, email } = req.body; // Assuming fullname is the correct field name
+  let { fullname, phone, email, balance, password } = req.body; // Assuming fullname is the correct field name
 
   // SQL query to update user data
   const sql = `
       UPDATE users
-      SET username = ?, phone = ?, email = ?
+      SET username = ?, phone = ?, email = ?, balance = ?, password = ?
       WHERE uid = ?
   `;
 
   try {
       // Execute the SQL query
-      const result = await queryAsync(sql, [fullname, phone, email, userID]);
+      const result = await queryAsync(sql, [fullname, phone, email,balance, password, userID]);
 
       if (result.affectedRows > 0) {
           res.json({ success: true, message: 'User updated successfully' });

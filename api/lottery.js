@@ -68,10 +68,13 @@ router.put("/userbuylotto", async (req, res) => {
     }
 });
 
-
 router.post("/searchlotto", async (req, res) => {
     let search = req.body;
     try {
+        if (!search.numlotto) {
+            return res.status(400).send("Missing required field: numlotto");
+        }
+
         // SQL search
         let sql = `
             SELECT * FROM lottory
@@ -79,8 +82,12 @@ router.post("/searchlotto", async (req, res) => {
               AND number LIKE ?
               AND accepted IS NULL
         `;
-        let formattedSearch = `${search.numlotto}`;
-        const result = await query(mysql.format(sql, [`%${formattedSearch}%`]));
+        let formattedSearch = `%${search.numlotto}%`; // Add wildcards to both sides
+        const result = await query(mysql.format(sql, [formattedSearch]));
+
+        if (result.length === 0) {
+            return res.status(404).send("No matching lotto found");
+        }
 
         res.status(200).json(result); // Changed to 200 for successful search
     } catch (err) {
@@ -88,6 +95,7 @@ router.post("/searchlotto", async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 });
+
 
 
 module.exports = router;

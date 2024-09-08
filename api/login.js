@@ -8,14 +8,16 @@ const router = express.Router();
 // login
 router.post('/', async (req, res) => {
   try {
-    const { phone, password } = req.body;
-    const sql = 'SELECT * FROM users WHERE phone = ? AND password = ?';
-    const result = await queryAsync(sql, [phone, password]);
+    const { identifier, password } = req.body; 
 
+    const sql = 'SELECT * FROM users WHERE (phone = ? OR email = ?) AND password = ?';
+    const result = await queryAsync(sql, [identifier, identifier, password]);
+
+    // If the user exists
     if (result.length > 0) {
-      res.json(result);
+      res.json({ success: true, user: result[0] });
     } else {
-      res.json({ success: false });
+      res.json({ success: false, message: 'Invalid phone/email or password' });
     }
   } catch (err) {
     console.error(err);

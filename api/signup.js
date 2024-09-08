@@ -10,13 +10,16 @@ router.post('/', async (req, res) => {
   try {
     const { username, password, email, phone, balance } = req.body;
 
+    // Convert balance to a number if it's provided as a string
+    const parsedBalance = balance !== undefined ? Number(balance) : undefined;
+
     // Validate that balance, if provided, is a valid number
-    if (balance !== undefined && (typeof balance !== 'number' || balance < 0)) {
+    if (parsedBalance !== undefined && (isNaN(parsedBalance) || parsedBalance < 0)) {
       return res.status(400).json({ success: false, message: 'Invalid balance value' });
     }
 
     // Set the default balance if not provided
-    const userBalance = balance !== undefined ? balance : 500;
+    const userBalance = parsedBalance !== undefined ? parsedBalance : 500;
 
     const checkSql = 'SELECT * FROM users WHERE phone = ?';
     const existingUser = await queryAsync(checkSql, [phone]);
@@ -25,7 +28,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
-    // Set the user type as 'user'
     const userType = 'user';
 
     const insertSql = 'INSERT INTO users (username, password, email, phone, type, balance) VALUES (?, ?, ?, ?, ?, ?)';

@@ -93,6 +93,38 @@ router.get("/lottouser/:uid", async (req, res) => {
     }
 });
 
+router.put("/prize", (req, res) => {
+    let prize = req.body;
+    const sql = "UPDATE lottory SET accepted = ? WHERE lottery_id = ? AND uid = ?";
+    conn.query(sql, [1,prize.lid,prize.uid], (err, result, fields) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Internal Server Error");
+        }
+        let sqlCheckWallet = "SELECT balance FROM users WHERE uid = ?"; 
+        conn.query(sqlCheckWallet, [prize.uid], (err, result) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).send("Internal Server Error");
+            }
+            if (result.length === 0) {
+                return res.status(404).send("User not found");
+            }
+            let currentWallet = result[0].wallet;
+            let moneyuser = currentWallet + prize.money;
+            let updateWallet = "UPDATE users SET balance = ? WHERE uid = ?";
+            let sqlUpdateWallet = mysql.format(updateWallet, [moneyuser, prize.uid]);
+            conn.query(sqlUpdateWallet, (err, result) => {
+                if (err) {
+                    console.error(err);
+                    return res.status(500).send("Internal Server Error");
+                }
+                res.status(200).send("Update successful");
+            });
+        });
+    });
+});
+
 router.post("/searchlotto", async (req, res) => {
     let search = req.body;
     if (!search.number_lotto) {

@@ -28,10 +28,9 @@ router.get("/seprize", async (req, res) => {
 
 router.put("/userbuylotto", async (req, res) => {
     let userbuylotto = req.body;
-    const pricelotto = 50; // Price of the lottery ticket
+    const pricelotto = 50;
 
     try {
-        // Check the user's wallet balance
         const sqlCheckWallet = "SELECT balance FROM users WHERE uid = ?";
         const walletResults = await query(sqlCheckWallet, [userbuylotto.uid]);
 
@@ -43,16 +42,12 @@ router.put("/userbuylotto", async (req, res) => {
         if (currentWallet < pricelotto) {
             return res.status(400).send("Insufficient funds");
         }
-
-        // Check if the ticket is already purchased by another user
         const sqlCheckTicket = "SELECT * FROM lottory WHERE lottery_id = ? AND uid IS NOT NULL";
         const ticketResults = await query(sqlCheckTicket, [userbuylotto.lottery_id]);
 
         if (ticketResults.length > 0) {
             return res.status(400).send("Ticket already purchased");
         }
-
-        // Update the user's wallet
         let moneyuser = currentWallet - pricelotto;
         const updateWallet = "UPDATE users SET balance = ? WHERE uid = ?";
         const walletUpdateResult = await query(updateWallet, [moneyuser, userbuylotto.uid]);
@@ -60,8 +55,6 @@ router.put("/userbuylotto", async (req, res) => {
         if (walletUpdateResult.affectedRows === 0) {
             return res.status(500).send("Failed to update wallet");
         }
-
-        // Proceed to update the lotto table
         const sqlUpdateLotto = "UPDATE lottory SET uid = ? WHERE lottery_id = ?";
         const lottoUpdateResult = await query(sqlUpdateLotto, [userbuylotto.uid, userbuylotto.lottery_id]);
 
@@ -75,7 +68,6 @@ router.put("/userbuylotto", async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 });
-
 
 router.get("/lottouser/:uid", async (req, res) => {
     let uid = req.params.uid;

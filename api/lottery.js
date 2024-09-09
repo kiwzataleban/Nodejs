@@ -19,7 +19,7 @@ router.get("/seprize", async (req, res) => {
     try {
         const sql = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5') ORDER BY `prize` ASC;";
         const result = await query(sql);
-        res.status(201).json(result);
+        res.status(200).json(result);
     } catch (err) {
         console.error(err);
         res.status(500).send("Internal Server Error");
@@ -31,37 +31,62 @@ router.put("/userbuylotto", async (req, res) => {
     const pricelotto = 50; // Price of the lottery ticket
 
     try {
-        // Validate inputs
-        if (typeof userbuylotto.uid !== 'number' || typeof userbuylotto.lottery_id !== 'number') {
-            return res.status(400).send("Invalid input");
-        }
+        // Check the user's wallet balance
+        const sqlCheckWallet = "SELECT balance FROM users WHERE uid = ?";
+        const walletResults = await query(sqlCheckWallet, [userbuylotto.uid]);
 
-        // Check the user's balance first
-        let sqlCheckbalance = "SELECT balance FROM users WHERE uid = ?";
-        const result = await query(sqlCheckbalance, [userbuylotto.uid]);
-
-        if (result.length === 0) {
+        if (walletResults.length === 0) {
             return res.status(404).send("User not found");
         }
 
-        let currentbalance = result[0].balance;
-        if (currentbalance < pricelotto) {
+        let currentWallet = walletResults[0].balance;
+        if (currentWallet < pricelotto) {
             return res.status(400).send("Insufficient funds");
         }
 
-        // Update the user's balance
-        let moneyuser = currentbalance - pricelotto;
-        let updatebalance = "UPDATE users SET balance = ? WHERE uid = ?";
-        await query(updatebalance, [moneyuser, userbuylotto.uid]);
+        // Check if the ticket is already purchased by another user
+        const sqlCheckTicket = "SELECT * FROM lottory WHERE lottery_id = ? AND uid IS NOT NULL";
+        const ticketResults = await query(sqlCheckTicket, [userbuylotto.lottery_id]);
 
-        // Update the lotto table
-        let sqlUpdateLotto = "UPDATE lottory SET uid = ? WHERE lottery_id = ?";
-        await query(sqlUpdateLotto, [userbuylotto.uid, userbuylotto.lottery_id]);
+        if (ticketResults.length > 0) {
+            return res.status(400).send("Ticket already purchased");
+        }
 
-        res.status(200).send({
-            message: "Purchase successful",
-            newBalance: moneyuser
-        });
+        // Update the user's wallet
+        let moneyuser = currentWallet - pricelotto;
+        const updateWallet = "UPDATE users SET balance = ? WHERE uid = ?";
+        const walletUpdateResult = await query(updateWallet, [moneyuser, userbuylotto.uid]);
+
+        if (walletUpdateResult.affectedRows === 0) {
+            return res.status(500).send("Failed to update wallet");
+        }
+
+        // Proceed to update the lotto table
+        const sqlUpdateLotto = "UPDATE lottory SET uid = ? WHERE lottery_id = ?";
+        const lottoUpdateResult = await query(sqlUpdateLotto, [userbuylotto.uid, userbuylotto.lottery_id]);
+
+        if (lottoUpdateResult.affectedRows === 0) {
+            return res.status(500).send("Failed to update lottery");
+        }
+
+        res.status(200).send("Purchase successful");
+    } catch (err) {
+        console.error("Error:", err.message);
+        res.status(500).send("Internal Server Error");
+    }
+});
+
+
+router.get("/lottouser/:uid", async (req, res) => {
+    let uid = req.params.uid;
+    try {
+        const sql = "SELECT * FROM lottory WHERE uid = ? AND (accepted IS NULL OR accepted = 0)";
+        const result = await query(sql, [uid]);
+        if (result.length > 0) {
+            res.status(200).json(result);
+        } else {
+            res.status(404).send("No lottery tickets found for the user");
+        }
     } catch (err) {
         console.error(err);
         res.status(500).send("Internal Server Error");
@@ -70,44 +95,28 @@ router.put("/userbuylotto", async (req, res) => {
 
 router.post("/searchlotto", async (req, res) => {
     let search = req.body;
-    try {
-        if (!search.number_lotto) {
-            return res.status(400).send("Missing required field: number_lotto");
-        }
+    if (!search.number_lotto) {
+        return res.status(400).send("Missing required field: number_lotto");
+    }
 
-        // Manually format the query
-        let sql = `
+    try {
+        // Use parameterized query to prevent SQL injection
+        const sql = `
             SELECT lottery_id, price, number, prize, uid, accepted
             FROM lottory
-            WHERE number LIKE '%${search.number_lotto}%'
-              AND accepted IS NULL
+            WHERE number LIKE ? AND accepted IS NULL
         `;
-        console.log("Executing SQL Query:", sql); // Log the SQL query for debugging
-        const result = await query(sql);
+        const result = await query(sql, [`%${search.number_lotto}%`]);
 
         if (result.length === 0) {
             return res.status(404).send("No matching lotto found");
         }
 
-        res.status(200).json(result); // Send the matching results
+        res.status(200).json(result);
     } catch (err) {
-        console.error("Search Error:", err.message); // Log error details
+        console.error("Search Error:", err.message);
         res.status(500).send("Internal Server Error");
     }
-});
-
-router.get("/lottouser/:uid", (req, res) => {
-    let uid = req.params.uid;
-    const sql = "SELECT * FROM lottory WHERE uid = ? AND (accepted IS NULL OR accepted = 0)";
-    conn.query(sql, [uid], (err, result, fields) => {
-        if (result && result.length > 0) {
-            res.status(201).json(result);
-        } else {
-            res.status(500).json({
-                success: false,
-            });
-        }
-    });
 });
 
 module.exports = router;

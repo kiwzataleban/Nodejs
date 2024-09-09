@@ -96,6 +96,18 @@ router.post("/searchlotto", async (req, res) => {
     }
 });
 
-
+router.get("/lottouser/:uid", (req, res) => {
+    let uid = req.params.uid;
+    const sql = "SELECT * FROM lottory WHERE uid = ? AND (accepted IS NULL OR accepted = 0)";
+    conn.query(sql, [uid], (err, result, fields) => {
+        if (result && result.length > 0) {
+            res.status(201).json(result);
+        } else {
+            res.status(500).json({
+                success: false,
+            });
+        }
+    });
+});
 
 module.exports = router;

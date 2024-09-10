@@ -14,7 +14,16 @@ router.get("/", async (req, res) => {
         res.status(500).send("Internal Server Error");
     }
 });
-
+router.get("/with_uid", async (req, res) => {
+    try {
+        const sql = "SELECT * FROM lottory WHERE uid IS NOT NULL";
+        const result = await query(sql);
+        res.status(200).json(result);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send("Internal Server Error");
+    }
+});
 router.get("/seprize", async (req, res) => {
     try {
         const sql = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5') ORDER BY `prize` ASC;";

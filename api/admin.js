@@ -31,101 +31,38 @@ router.get("/randomlottory/:amount", async (req, res) => {
 });
 
 router.get("/ranprizeall", async (req, res) => {
-  let sqlCheck = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5')";
-  
-  conn.query(sqlCheck, (err, result) => {
+  conn.getConnection(async (err, connection) => {
     if (err) {
-      console.error("Error checking prizes:", err);
+      console.error("Error getting connection:", err);
       return res.status(500).send("Internal Server Error");
     }
-    
-    if (result.length > 0) {
-      return res.status(400).send("You have already drawn a random prize");
-    }
-    
-    let sql = "SELECT * FROM lottory";
-    
-    conn.query(sql, async (err, result) => {
+
+    let sqlCheck = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5')";
+    connection.query(sqlCheck, (err, result) => {
       if (err) {
-        console.error("Error retrieving data:", err);
+        console.error("Error checking prizes:", err);
+        connection.release();
         return res.status(500).send("Internal Server Error");
       }
-      
-      if (result.length < 5) {
-        return res.status(400).send("Not enough data to select 5 unique numbers");
-      }
-      
-      let selectedNumbers = [];
-      while (selectedNumbers.length < 5) {
-        let randomIndex = Math.floor(Math.random() * result.length);
-        let selectedNumber = result[randomIndex].number;
-        if (!selectedNumbers.includes(selectedNumber)) {
-          selectedNumbers.push(selectedNumber);
-        }
-      }
-      
-      let prizeTypes = ['1', '2', '3', '4', '5'];
-      
-      try {
-        for (let i = 0; i < selectedNumbers.length; i++) {
-          let updatelottory = "UPDATE lottory SET prize = ? WHERE number = ?";
-          let sqlUpdatelottory = mysql.format(updatelottory, [prizeTypes[i], selectedNumbers[i]]);
-          await new Promise((resolve, reject) => {
-            conn.query(sqlUpdatelottory, (err, result) => {
-              if (err) {
-                console.error("Error updating prize:", err);
-                reject(err);
-              } else {
-                resolve(result);
-              }
-            });
-          });
-        }
-        
-        let updateaccepted = "UPDATE lottory SET accepted = ?";
-        let sqlUpdateaccepted = mysql.format(updateaccepted, [0]);
-        await new Promise((resolve, reject) => {
-          conn.query(sqlUpdateaccepted, (err, result) => {
-            if (err) {
-              console.error("Error updating accepted column:", err);
-              reject(err);
-            } else {
-              resolve(result);
-            }
-          });
-        });
-        
-        res.status(200).send("RandomNumberAll successful");
-      } catch (error) {
-        console.error("Error during database update:", error);
-        res.status(500).send("Error updating database");
-      }
-    });
-  });
-});
 
+      if (result.length > 0) {
+        connection.release();
+        return res.status(400).send("You have already drawn a random prize");
+      }
 
-router.get("/ranprizeuser", async (req, res) => {
-  let sqlCheck = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5')";
-  conn.query(sqlCheck, async (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Internal Server Error");
-    }
-    if (result.length > 0) {  // Adjusted to 0 to allow checking for already drawn prizes
-      return res.status(400).send("You have already drawn a random prize");
-    } else {
-      let sql = "SELECT * FROM lottory WHERE uid IS NOT NULL";
-      conn.query(sql, async (err, result) => {
+      let sql = "SELECT * FROM lottory";
+      connection.query(sql, async (err, result) => {
         if (err) {
-          console.error(err);
+          console.error("Error retrieving data:", err);
+          connection.release();
           return res.status(500).send("Internal Server Error");
         }
-        
+
         if (result.length < 5) {
+          connection.release();
           return res.status(400).send("Not enough data to select 5 unique numbers");
         }
-        
+
         let selectedNumbers = [];
         while (selectedNumbers.length < 5) {
           let randomIndex = Math.floor(Math.random() * result.length);
@@ -134,14 +71,115 @@ router.get("/ranprizeuser", async (req, res) => {
             selectedNumbers.push(selectedNumber);
           }
         }
-        
+
+        let prizeTypes = ['1', '2', '3', '4', '5'];
+
+        try {
+          // Start transaction
+          await new Promise((resolve, reject) => {
+            connection.beginTransaction(err => {
+              if (err) reject(err);
+              else resolve();
+            });
+          });
+
+          // Update lottery prizes without mysql.format()
+          for (let i = 0; i < selectedNumbers.length; i++) {
+            let updatelottory = `UPDATE lottory SET prize = '${prizeTypes[i]}' WHERE number = '${selectedNumbers[i]}'`;
+            await new Promise((resolve, reject) => {
+              connection.query(updatelottory, (err, result) => {
+                if (err) {
+                  console.error("Error updating prize:", err);
+                  reject(err);
+                } else {
+                  resolve(result);
+                }
+              });
+            });
+          }
+
+          // Update accepted column without mysql.format()
+          let updateaccepted = `UPDATE lottory SET accepted = 0`;
+          await new Promise((resolve, reject) => {
+            connection.query(updateaccepted, (err, result) => {
+              if (err) {
+                console.error("Error updating accepted column:", err);
+                reject(err);
+              } else {
+                resolve(result);
+              }
+            });
+          });
+
+          // Commit transaction
+          await new Promise((resolve, reject) => {
+            connection.commit(err => {
+              if (err) {
+                connection.rollback(() => {
+                  reject(err);
+                });
+              } else {
+                resolve();
+              }
+            });
+          });
+
+          connection.release();
+          res.status(200).send("RandomNumberAll successful");
+
+        } catch (error) {
+          // Rollback transaction on error
+          await new Promise((resolve, reject) => {
+            connection.rollback(() => {
+              console.error("Transaction failed, rolling back:", error);
+              resolve();
+            });
+          });
+          connection.release();
+          res.status(500).send("Error updating database");
+        }
+      });
+    });
+  });
+});
+
+router.get("/ranprizeuser", async (req, res) => {
+  let sqlCheck = "SELECT * FROM `lottory` WHERE `prize` IN ('1', '2', '3', '4', '5')";
+  conn.query(sqlCheck, async (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Internal Server Error");
+    }
+
+    if (result.length > 0) {  
+      return res.status(400).send("You have already drawn a random prize");
+    } else {
+      let sql = "SELECT * FROM lottory WHERE uid IS NOT NULL";
+      conn.query(sql, async (err, result) => {
+        if (err) {
+          console.error(err);
+          return res.status(500).send("Internal Server Error");
+        }
+
+        if (result.length < 5) {
+          return res.status(400).send("Not enough data to select 5 unique numbers");
+        }
+
+        let selectedNumbers = [];
+        while (selectedNumbers.length < 5) {
+          let randomIndex = Math.floor(Math.random() * result.length);
+          let selectedNumber = result[randomIndex].number;
+          if (!selectedNumbers.includes(selectedNumber)) {
+            selectedNumbers.push(selectedNumber);
+          }
+        }
+
         let prizeTypes = ['1', '2', '3', '4', '5'];
         try {
           for (let i = 0; i < selectedNumbers.length; i++) {
-            let updatelottory = "UPDATE lottory SET prize = ? WHERE number = ?";
-            let sqlUpdatelottory = mysql.format(updatelottory, [prizeTypes[i], selectedNumbers[i]]);
+            let updatelottory = `UPDATE lottory SET prize = '${prizeTypes[i]}' WHERE number = '${selectedNumbers[i]}'`;
             await new Promise((resolve, reject) => {
-              conn.query(sqlUpdatelottory, (err, result) => {
+              conn.query(updatelottory, (err, result) => {
                 if (err) {
                   reject(err);
                 } else {
@@ -150,11 +188,10 @@ router.get("/ranprizeuser", async (req, res) => {
               });
             });
           }
-          
-          let updateaccepted = "UPDATE lottory SET accepted = ?";
-          let sqlUpdateaccepted = mysql.format(updateaccepted, [0]);
+
+          let updateaccepted = `UPDATE lottory SET accepted = 0`;
           await new Promise((resolve, reject) => {
-            conn.query(sqlUpdateaccepted, (err, result) => {
+            conn.query(updateaccepted, (err, result) => {
               if (err) {
                 reject(err);
               } else {
@@ -162,7 +199,7 @@ router.get("/ranprizeuser", async (req, res) => {
               }
             });
           });
-          
+
           res.status(200).send("RandomNumberAll successful");
         } catch (error) {
           console.error("Error updating database: ", error);
@@ -172,6 +209,7 @@ router.get("/ranprizeuser", async (req, res) => {
     }
   });
 });
+
 
 router.get("/lottory", (req, res) => {
   const sql = "SELECT * FROM lottory WHERE uid IS NOT NULL";
